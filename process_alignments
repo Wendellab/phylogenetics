@@ -1,0 +1,79 @@
+#!/usr/bin/bash
+# Corrinne Grover, April 2015
+
+# if less than two arguments supplied, display usage
+        if [  $# -le 0 ]
+        then
+                echo "Corrinne Grover, April 2015"
+                echo "This script removes sequences from an aligned fasta file that have more than 80% gaps, and then removes remaining alignment positions that have gaps."
+                echo "This script requires Python and PyCogent (http://pycogent.org/)"
+                # note Pycogent is stupid and cannot take passed variable names as arguments for LoadSeqs. Lame.
+                echo -e "\nUsage:\n$0 infile \n"
+                exit 1
+        fi
+
+# user supplied -h or --help; display usage
+        if [[ ( $# == "--help") ||  $# == "-h" ]]
+        then
+                echo "Corrinne Grover, April 2015"
+                echo "This script removes sequences from an aligned fasta file that have more than 80% gaps, and then removes remaining alignment positions that have gaps."
+                echo "This script requires Python and PyCogent (http://pycogent.org/)"
+                echo -e "\nUsage:\n$0 infile \n"
+                exit 0
+        fi
+
+sed 's/N/-/g' $1 | sed 's/\.sort//g' | sed 's/\.bam//g' | sed 's/AD3_95/AD7_WilB/g' | sed 's/AD4/AD7_WilA/g' | sed 's/TX2265/AD7_Wake/g' | sed 's/Wake_C1/AD7_PK1/g' | sed 's/A1_Wagad/AD4/g' | sed 's/TX2266/A1Wag/g' | sed 's/WilkesA/AD3/g' | sed 's/WilkesB/TX2266/g' | sed 's/Peale-KR4/TX2265/g' | sed 's/TX2271/AD7_PK4/g' | sed 's/TX2263/TX2271/g' | sed 's/Peale-KR1/TX2263/g' > temp.fasta
+grep "\.A" temp.fasta | sed 's/>//g' > tempA.names
+grep "\.D" temp.fasta | sed 's/>//g' > tempD.names
+pyfasta extract --header --fasta=temp.fasta --file tempA.names > tempA.fasta
+pyfasta extract --header --fasta=temp.fasta --file tempD.names > tempD.fasta
+
+python - << END
+
+import sys
+from cogent import LoadSeqs, DNA
+
+alnA = LoadSeqs('tempA.fasta', moltype=DNA, format='fasta')
+filtered_alnA = alnA.omitGapSeqs(0.80)
+filtered_gapsA = filtered_alnA.omitGapPositions(0.2)
+#filtered_gapsA.toFasta()
+filtered_gapsA.writeToFile('temp2A.fasta')
+
+alnD = LoadSeqs('tempD.fasta', moltype=DNA, format='fasta')
+filtered_alnD = alnD.omitGapSeqs(0.80)
+filtered_gapsD = filtered_alnD.omitGapPositions(0.2)
+#filtered_gapsD.toFasta()
+filtered_gapsD.writeToFile('temp2D.fasta')
+
+
+#sys.exit()
+END
+
+sed 's/-/N/g' temp2A.fasta > ${1%.fasta}.Nfiltered.A.fasta
+sed 's/-/N/g' temp2D.fasta > ${1%.fasta}.Nfiltered.D.fasta
+rm temp.fasta
+rm temp2A.fasta
+rm temp2D.fasta
+rm tempA.names
+rm tempD.names
+
+keptotherppA=`grep ">AD[345]" ${1%.fasta}.Nfiltered.A.fasta | wc -l`
+keptotherppD=`grep ">AD[345]" ${1%.fasta}.Nfiltered.D.fasta | wc -l`
+
+ekA=`grep ">TX" ${1%.fasta}.Nfiltered.A.fasta | wc -l`
+ekD=`grep ">TX" ${1%.fasta}.Nfiltered.D.fasta | wc -l`
+
+PeA=`grep ">AD7" ${1%.fasta}.Nfiltered.A.fasta | wc -l`
+PeD=`grep ">AD7" ${1%.fasta}.Nfiltered.D.fasta | wc -l`
+
+mkdir missing_others
+
+if [ "$keptotherppA" -ne 3 ] || [ "$ekA" -lt 1 ] || [ "$PeA" -lt 4 ]
+then
+  mv ${1%.fasta}.Nfiltered.A.fasta missing_others
+fi
+
+if [ "$keptotherppD" -ne 3 ] || [ "$ekD" -lt 1 ] || [ "$PeD" -lt 4]
+then
+  mv ${1%.fasta}.Nfiltered.D.fasta missing_others
+fi
