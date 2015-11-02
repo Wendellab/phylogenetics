@@ -4,9 +4,7 @@
 #Last updated: 12/Aug/2014
 #Title: phyloClean.pl
 #Keywords: phylogenetics, gap, ambiguous sites
-#Some days you get up thinking you are almost done with something and then you
-#realize how much more s*** you have to do.  This is one of those days.  This
-#script takes in an alignment, eliminates all positions with a gap, then
+#This script takes in an alignment, eliminates all positions with a gap, then
 #removes all sequences with greater than xx% ambiguous sites.  The alignment
 #can be in any standard alignment format.  
 
